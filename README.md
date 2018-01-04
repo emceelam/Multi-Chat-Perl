@@ -1,6 +1,6 @@
 # NAME
 
-Multi Chat C - A socket-based multi-client chat written with C code
+Multi Chat Perl - A socket-based multi-client chat written with Perl code
 
 # SYNOPSIS
 
