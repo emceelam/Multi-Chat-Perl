@@ -5,14 +5,24 @@ use strict;
 use Socket qw(:DEFAULT :crlf);
 use Fcntl qw(F_GETFL F_SETFL O_NONBLOCK);
 use POSIX;
+use Readonly;
 use autodie qw(:socket fcntl sysread syswrite);
 use Data::Dumper;
 
 
+Readonly my $PORT => 4023;
+Readonly my $TIME_OUT => 10;
 
-# constants
-my $PORT = 4023;
-my $TIME_OUT = 10;
+
+print <<TEXT
+Multi client chat server, using telnet, programmed in C
+To connect:
+    telnet 127.0.0.1 $PORT
+
+Everything typed by one chat user will be copied to other chat users.
+Typing 'quit' on telnet sessions will disconnect.
+TEXT
+;
 
 my $sigset    = POSIX::SigSet->new(SIGPIPE);
 my $sigaction = POSIX::SigAction->new(sub { exit(0) } , $sigset, SA_NOCLDSTOP);
