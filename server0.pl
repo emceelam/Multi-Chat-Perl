@@ -25,9 +25,6 @@ Typing 'quit' on telnet sessions will disconnect.
 TEXT
 ;
 
-my $sigset    = POSIX::SigSet->new(SIGPIPE);
-my $sigaction = POSIX::SigAction->new(sub { exit(0) } , $sigset, SA_NOCLDSTOP);
-
 
 =begin comment
 
