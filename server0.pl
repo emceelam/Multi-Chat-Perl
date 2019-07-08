@@ -316,6 +316,7 @@ while (1) {
 =end comment
 =cut
 
+    my $write_cnt = 0;
     my $wbits = $save_set;
 
     #select RBITS,WBITS,EBITS,TIMEOUT
@@ -328,9 +329,16 @@ while (1) {
       {
         next;
       }
+
       syswrite ($handle, "$str\n");
       print ("write $write_fd: $str\n");
+      $write_cnt++;
     }
-  }
-}
+    if (!$write_cnt) {
+      print "No other telnet sessions. Message not copied: $str\n";
+    }
+
+  }  # for loop for existing connections
+
+} # while(1)
 
