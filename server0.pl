@@ -10,6 +10,7 @@ use Data::Dumper;
 
 
 
+# constants
 my $PORT = 4023;
 my $TIME_OUT = 10;
 
@@ -110,14 +111,17 @@ my $listen_fd = fileno($listen_handle);
 $fd_to_handle{$listen_fd} = $listen_handle;
 
 
-my $rin = "";
-my $rout;
-vec($rin, $listen_fd, 1) = 1;
+my $save_set = "";
+my $rbits;
+vec($save_set, $listen_fd, 1) = 1;
 my $loop_cnt = 0;
 my %fd_to_expiry;
 while (1) {
-  # print "rin: " . unpack ("H*", $rin) . "\n";
-  select ($rout = $rin, undef, undef, 10);
+  # print "rin: " . unpack ("H*", $save_set) . "\n";
+  $rbits = $save_set;
+
+  # select RBITS,WBITS,EBITS,TIMEOUT
+  select ($rbits, undef, undef, $TIME_OUT);
 
 =begin comment
 
@@ -133,11 +137,11 @@ while (1) {
 =cut
 
   #print "loop_cnt: " . $loop_cnt++ . "\n";
-  #print "rout hex:  " . unpack ("H*", $rout) . "\n";
-  #print "rout bits: " . unpack ("B*", $rout) . "\n";
-  my $max_fd = length unpack ("B*", $rout);
+  #print "rbits hex:  " . unpack ("H*", $rbits) . "\n";
+  #print "rbits bits: " . unpack ("B*", $rbits) . "\n";
+  my $max_fd = length unpack ("B*", $rbits);
   my $now = time();
-  if (vec($rout, $listen_fd, 1)) {
+  if (vec($rbits, $listen_fd, 1)) {
     my $conn_handle;
     my $paddr = accept ($conn_handle, $listen_handle);
     my ($port, $iaddr) = sockaddr_in($paddr);
@@ -145,7 +149,7 @@ while (1) {
     my $conn_fd = fileno($conn_handle);
     $fd_to_handle{$conn_fd} = $conn_handle;
     $fd_to_expiry{$conn_fd} = $now + $TIME_OUT;
-    vec($rin, $conn_fd, 1) = 1;
+    vec($save_set, $conn_fd, 1) = 1;
     print ("accepted conn $conn_fd from $name, $port\n");
 
 
@@ -202,7 +206,7 @@ while (1) {
 =end comment
 =cut
   foreach my $read_fd ( ($listen_fd+1)..$max_fd) {
-    if (!vec ($rout, $read_fd, 1)) {
+    if (!vec ($rbits, $read_fd, 1)) {
       next;
     }
     print "socket fd $read_fd is readable\n";
@@ -253,7 +257,7 @@ while (1) {
     { 
       delete $fd_to_handle{$read_fd};
       delete $fd_to_expiry{$read_fd};
-      vec($rin, $read_fd, 1) = 0;
+      vec($save_set, $read_fd, 1) = 0;
       print "Quit from socket $read_fd\n";
       close($handle);
       next;
@@ -301,9 +305,16 @@ while (1) {
 
 =end comment
 =cut
+
+    my $wbits = $save_set;
+
+    #select RBITS,WBITS,EBITS,TIMEOUT
+    select (undef, $wbits, undef, $TIME_OUT);
+
     while (my ($write_fd, $handle) = each %fd_to_handle) {
-      if ( $write_fd == $listen_fd 
-        || $write_fd == $read_fd)
+      if ( $write_fd == $listen_fd
+        || $write_fd == $read_fd      # don't echo to originator
+        || !vec ($wbits, $write_fd, 1))
       {
         next;
       }
