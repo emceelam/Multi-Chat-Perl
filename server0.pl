@@ -6,6 +6,7 @@ use Socket qw(:DEFAULT :crlf);
 use Fcntl qw(F_GETFL F_SETFL O_NONBLOCK);
 use POSIX;
 use Readonly;
+use List::Util qw(min);
 use autodie qw(:socket fcntl sysread syswrite);
 use Data::Dumper;
 
@@ -340,5 +341,43 @@ while (1) {
 
   }  # for loop for existing connections
 
+  $save_set = start_end_alarm(\%fd_to_handle, \%fd_to_expiry, $save_set, $max_fd);
+
 } # while(1)
 
+sub start_end_alarm {
+  my ($fd_to_handle, $fd_to_expiry, $save_set, $max_fd) = @_;
+  my $now = time();
+  my $min_expiry = 0;
+
+  foreach my $fd (keys %$fd_to_expiry) {
+    my $expiry = $fd_to_expiry->{$fd};
+    if ($expiry == 0) {
+      next;
+    }
+
+    if ($expiry <= $now) {
+      print ("Time out socket $fd. Inactivity of $TIME_OUT sec. Closing socket.\n");
+
+      my $handle = $fd_to_handle->{$fd};
+      delete $fd_to_handle->{$fd};
+      delete $fd_to_expiry->{$fd};
+      vec($save_set, $fd, 1) = 0;
+      close($handle);
+
+      next;
+    }
+
+    $min_expiry = min ($min_expiry, $expiry)
+  }
+
+  # setting the alarm to the smallest expiration of the multiple sockets we are tracking
+  if ($min_expiry) {
+    my $future = $min_expiry - $now;
+    $future = min  (1, $future);
+    print "sig_handler alarm ($future)\n";
+    alarm ($future);
+  }
+
+  return $save_set
+}
