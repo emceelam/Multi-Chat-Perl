@@ -27,6 +27,7 @@ This is a socket-based multi-client chat that echoes one user's chat to other us
 * Multiple telnet chat sessions
     * select()
     * non-blocking read/write sockets
+* [Docker instructions](docker.md)
 
 # AUTHOR
 
